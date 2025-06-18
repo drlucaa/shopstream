@@ -9,7 +9,6 @@ require (
 	github.com/rs/zerolog v1.34.0
 	github.com/spf13/viper v1.20.1
 	github.com/streadway/amqp v1.1.0
-	go.trai.ch/gecro v1.3.1
 )
 
 require (

@@ -34,7 +34,10 @@ func main() {
 		zerolog.SetGlobalLevel(zerolog.DebugLevel)
 	case "info":
 		zerolog.SetGlobalLevel(zerolog.InfoLevel)
-	// ... (other cases)
+	case "warn":
+		zerolog.SetGlobalLevel(zerolog.WarnLevel)
+	case "error":
+		zerolog.SetGlobalLevel(zerolog.ErrorLevel)
 	default:
 		zerolog.SetGlobalLevel(zerolog.InfoLevel)
 	}
@@ -57,13 +60,15 @@ func main() {
 	}
 	defer rmqManager.Close()
 
-	// Initialize the message processor
-	msgProcessor := processor.New(db, rmqManager)
+	// Initialize the message processor, passing the config
+	msgProcessor := processor.New(db, rmqManager, cfg)
 
 	// Start the consumer
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
+	// The message handler logic within StartConsuming should be robust enough
+	// to handle retries and permanent failures.
 	if err := rmqManager.StartConsuming(ctx, msgProcessor.MessageHandler); err != nil {
 		log.Fatal().Err(err).Msg("Failed to start consumer")
 	}
@@ -79,4 +84,5 @@ func main() {
 	// --- Graceful Shutdown ---
 	log.Info().Msg("Application shutting down...")
 	cancel()
+	// Deferred calls to db.Close() and rmqManager.Close() will execute here.
 }
