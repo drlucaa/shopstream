@@ -33,18 +33,18 @@ services:
       timeout: 5s
       retries: 5
 
-  postgres-order:
+  postgres-inventory:
     image: postgres:16
     ports:
       - "54322:5432"
     environment:
-      POSTGRES_USER: orderuser
-      POSTGRES_PASSWORD: orderpassword
-      POSTGRES_DB: order_db
+      POSTGRES_USER: inventoryuser
+      POSTGRES_PASSWORD: inventorypassword
+      POSTGRES_DB: inventory_db
     volumes:
       - postgres-order-data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U orderuser -d order_db"]
+      test: ["CMD-SHELL", "pg_isready -U inventoryuser -d inventory_db"]
       interval: 10s
       timeout: 5s
       retries: 5
