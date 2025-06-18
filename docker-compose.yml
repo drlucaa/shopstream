@@ -1,0 +1,50 @@
+volumes:
+  postgres-product-data:
+  postgres-order-data:
+
+services:
+  rabbitmq:
+    image: rabbitmq:3.13-management
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "check_port_connectivity"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+
+  postgres-product:
+    image: postgres:16
+    ports:
+      - "54321:5432"
+    environment:
+      POSTGRES_USER: productuser
+      POSTGRES_PASSWORD: productpassword
+      POSTGRES_DB: product_db
+    volumes:
+      - postgres-product-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U productuser -d product_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  postgres-order:
+    image: postgres:16
+    ports:
+      - "54322:5432"
+    environment:
+      POSTGRES_USER: orderuser
+      POSTGRES_PASSWORD: orderpassword
+      POSTGRES_DB: order_db
+    volumes:
+      - postgres-order-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U orderuser -d order_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
