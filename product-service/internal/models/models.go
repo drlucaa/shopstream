@@ -1,48 +1,52 @@
 package models
 
-import "encoding/json"
+import "time"
 
-// --- Incoming RabbitMQ Message Structures ---
+// --- Incoming Event ---
 
-// IncomingMessagePayload represents the "payload" part of the incoming message.
-type IncomingMessagePayload struct {
-	SomeKey string `json:"someKey"`
+// CheckedProduct represents a product from the inventory check event.
+type CheckedProduct struct {
+	ProductID      int64 `json:"productId"`
+	Quantity       int   `json:"quantity"`
+	StockAvailable bool  `json:"stockAvailable"`
 }
 
-// IncomingMessage represents the structure of the message received from RabbitMQ.
-type IncomingMessage struct {
-	EventID string                 `json:"eventId"`
-	UserID  int64                  `json:"userId"` // Changed to int64 for DB compatibility if ID is BIGINT
-	Payload IncomingMessagePayload `json:"payload"`
+// InventoryCheckedEvent is the event consumed by the product service.
+type InventoryCheckedEvent struct {
+	EventID       string           `json:"eventId"`
+	CorrelationID string           `json:"correlationId"`
+	OrderID       string           `json:"orderId"`
+	UserID        string           `json:"userId"`
+	Products      []CheckedProduct `json:"products"`
+	Timestamp     time.Time        `json:"timestamp"`
 }
 
 // --- Database Model ---
 
-// User represents the user data fetched from the database.
-type User struct {
-	ID    int64  `db:"id" json:"-"` // json:"-" to exclude from direct JSON marshaling if embedded
-	Name  string `db:"name" json:"name"`
-	Email string `db:"email" json:"email"`
+// Product represents product data in the database.
+type Product struct {
+	ID    int64   `db:"id"`
+	Name  string  `db:"name"`
+	Price float64 `db:"price"`
 }
 
-// --- Outgoing RabbitMQ Message Structure ---
+// --- Outgoing Event ---
 
-// EnrichedMessage represents the structure of the message to be published.
-type EnrichedMessage struct {
-	EventID         string                 `json:"eventId"`
-	UserID          int64                  `json:"userId"`
-	UserData        User                   `json:"userData"`
-	OriginalPayload IncomingMessagePayload `json:"originalPayload"`
+// DetailedProduct represents a product with full details.
+type DetailedProduct struct {
+	ProductID int64   `json:"productId"`
+	Quantity  int     `json:"quantity"`
+	Name      string  `json:"name"`
+	Price     float64 `json:"price"`
 }
 
-// --- Helper Methods (Optional but good practice) ---
-
-// ToJSON converts an EnrichedMessage to its JSON representation.
-func (em *EnrichedMessage) ToJSON() ([]byte, error) {
-	return json.Marshal(em)
-}
-
-// FromJSON parses an IncomingMessage from its JSON representation.
-func (im *IncomingMessage) FromJSON(data []byte) error {
-	return json.Unmarshal(data, im)
+// ProductDetailsFetchedEvent is the event published by the product service.
+type ProductDetailsFetchedEvent struct {
+	EventID       string            `json:"eventId"`
+	CorrelationID string            `json:"correlationId"`
+	OrderID       string            `json:"orderId"`
+	UserID        string            `json:"userId"`
+	Products      []DetailedProduct `json:"products"`
+	TotalPrice    float64           `json:"totalPrice"`
+	Timestamp     time.Time         `json:"timestamp"`
 }

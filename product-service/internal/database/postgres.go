@@ -22,35 +22,36 @@ func New(cfg config.Config) (*DB, error) {
 	connStr := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=%s",
 		cfg.DBHost, cfg.DBPort, cfg.DBUser, cfg.DBPassword, cfg.DBName, cfg.DBSSLMode)
 
-	log.Info().Msg("Connecting to database...")
+	log.Info().Msg("Connecting to product database...")
 	db, err := sqlx.Connect("postgres", connStr)
 	if err != nil {
-		return nil, fmt.Errorf("failed to connect to database: %w", err)
+		return nil, fmt.Errorf("failed to connect to product database: %w", err)
 	}
 
 	db.SetConnMaxLifetime(time.Minute * 3)
 	db.SetMaxOpenConns(10)
 	db.SetMaxIdleConns(10)
 
-	log.Info().Msg("Database connection successful.")
+	log.Info().Msg("Product database connection successful.")
 	return &DB{SQL: db}, nil
 }
 
 // Close gracefully closes the database connection.
 func (db *DB) Close() {
-	log.Info().Msg("Closing database connection.")
+	log.Info().Msg("Closing product database connection.")
 	db.SQL.Close()
 }
 
-// GetUserByID fetches a user from the database by their ID.
-func (db *DB) GetUserByID(ctx context.Context, userID int64) (models.User, error) {
-	var user models.User
-	query := `SELECT id, name, email FROM users WHERE id=$1` // Assuming your table is named 'users'
+// GetProductByID fetches a product from the database by its ID.
+func (db *DB) GetProductByID(ctx context.Context, productID int64) (models.Product, error) {
+	var product models.Product
+	// Assuming your table is named 'products' and has columns 'id', 'name', and 'price'.
+	query := `SELECT id, name, price FROM products WHERE id=$1`
 
-	err := db.SQL.GetContext(ctx, &user, query, userID)
+	err := db.SQL.GetContext(ctx, &product, query, productID)
 	if err != nil {
-		return models.User{}, fmt.Errorf("could not get user with ID %d: %w", userID, err)
+		return models.Product{}, fmt.Errorf("could not get product with ID %d: %w", productID, err)
 	}
 
-	return user, nil
+	return product, nil
 }

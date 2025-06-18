@@ -61,7 +61,7 @@ func main() {
 	defer rmqManager.Close()
 
 	// Initialize the message processor
-	msgProcessor := processor.New(db, rmqManager)
+	msgProcessor := processor.New(db, rmqManager, cfg)
 
 	// Start the consumer
 	ctx, cancel := context.WithCancel(context.Background())
