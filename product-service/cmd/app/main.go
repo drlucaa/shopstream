@@ -1,27 +1,29 @@
 package main
 
 import (
-	"fmt"
+	"context"
 	"os"
+	"os/signal"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/drluca/shopstream/productservice/config"
+	"github.com/drluca/shopstream/productservice/internal/database"
+	"github.com/drluca/shopstream/productservice/internal/eventbus"
+	"github.com/drluca/shopstream/productservice/internal/processor"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 )
 
 func main() {
 	// Setup structured logging
-	// UNIX Time is faster and smaller than most timestamps
 	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
-	// Default level is info, unless debug flag is present
 	zerolog.SetGlobalLevel(zerolog.InfoLevel)
-	// Use pretty console logging
 	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: time.RFC3339})
 
 	// Load configuration
-	cfg, err := config.LoadConfig(".") // Load app.env from the root project directory
+	cfg, err := config.LoadConfig(".")
 	if err != nil {
 		log.Fatal().Err(err).Msg("Failed to load configuration")
 	}
@@ -36,38 +38,49 @@ func main() {
 		zerolog.SetGlobalLevel(zerolog.WarnLevel)
 	case "error":
 		zerolog.SetGlobalLevel(zerolog.ErrorLevel)
-	case "fatal":
-		zerolog.SetGlobalLevel(zerolog.FatalLevel)
-	case "panic":
-		zerolog.SetGlobalLevel(zerolog.PanicLevel)
 	default:
 		zerolog.SetGlobalLevel(zerolog.InfoLevel)
 	}
 
 	log.Info().Str("appName", cfg.AppName).Msg("Application starting")
-	log.Info().Msgf("Log level set to: %s", cfg.LogLevel)
 
-	// --- Placeholder for future initializations ---
+	// --- Initializations ---
+
 	// Initialize Database
-	// Initialize RabbitMQ Connections (Consumer & Producer)
-	// Initialize Processor
-	// Start Consumer
+	db, err := database.New(cfg)
+	if err != nil {
+		log.Fatal().Err(err).Msg("Failed to initialize Database")
+	}
+	defer db.Close()
 
-	log.Info().Msg("Application setup complete. (Placeholder for run)")
+	// Initialize RabbitMQ Connection Manager
+	rmqManager, err := eventbus.NewRabbitMQManager(cfg)
+	if err != nil {
+		log.Fatal().Err(err).Msg("Failed to initialize RabbitMQ Manager")
+	}
+	defer rmqManager.Close()
 
-	// For now, just print some config values to test
-	log.Debug().Msgf("DB Host: %s", cfg.DBHost)
-	log.Debug().Msgf("RabbitMQ URL: %s", cfg.RabbitMQURL)
-	log.Debug().Msgf("Incoming Queue: %s", cfg.IncomingQueueName)
-	log.Debug().Msgf("Outgoing Topic: %s", cfg.OutgoingTopic)
+	// Initialize the message processor
+	msgProcessor := processor.New(db, rmqManager)
 
-	// Keep the main goroutine alive (until we have the actual consumer running)
-	// select {} // or use a signal handler for graceful shutdown later
-	fmt.Println("Application started. Press Ctrl+C to exit.")
-	// Example: Wait for a signal to gracefully shut down
-	// quit := make(chan os.Signal, 1)
-	// signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
-	// <-quit
-	// log.Info().Msg("Application shutting down...")
-	// Add cleanup code here (e.g., close DB connections, RabbitMQ channels)
+	// Start the consumer
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	if err := rmqManager.StartConsuming(ctx, msgProcessor.MessageHandler); err != nil {
+		log.Fatal().Err(err).Msg("Failed to start consumer")
+	}
+
+	log.Info().Msg("Application setup complete. Running and waiting for messages.")
+	log.Info().Msg("Press Ctrl+C to exit.")
+
+	// --- Wait for shutdown signal ---
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	<-quit
+
+	// --- Graceful Shutdown ---
+	log.Info().Msg("Application shutting down...")
+	cancel() // Signal context cancellation to long-running tasks
+	// Deferred calls to db.Close() and rmqManager.Close() will execute here.
 }
