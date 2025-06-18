@@ -58,32 +58,33 @@ func LoadConfig(path string) (config Config, err error) {
 	viper.SetDefault("APP_NAME", "product-service")
 	viper.SetDefault("LOG_LEVEL", "info")
 
-	viper.SetDefault("DB_HOST", "localhost")
+	// --- Database Defaults ---
+	viper.SetDefault("DB_HOST", "postgres-product")
 	viper.SetDefault("DB_PORT", 5432)
-	viper.SetDefault("DB_USER", "postgres")
-	viper.SetDefault("DB_PASSWORD", "password")
-	viper.SetDefault("DB_NAME", "mydatabase")
+	viper.SetDefault("DB_USER", "productuser")
+	viper.SetDefault("DB_PASSWORD", "productpassword")
+	viper.SetDefault("DB_NAME", "product_db")
 	viper.SetDefault("DB_SCHEMA", "public")
 	viper.SetDefault("DB_SSL_MODE", "disable")
 
-	viper.SetDefault("RABBITMQ_URL", "amqp://guest:guest@localhost:5672/")
-	viper.SetDefault("INCOMING_EXCHANGE_NAME", "events.input")
-	viper.SetDefault("INCOMING_QUEUE_NAME", "user_events_queue")
-	viper.SetDefault("INCOMING_ROUTING_KEY", "user.created") // Example routing key
-	viper.SetDefault("RABBITMQ_EXCHANGE_TYPE", "topic")      // Default to topic exchange
-	viper.SetDefault("OUTGOING_EXCHANGE_NAME", "events.output")
-	viper.SetDefault("OUTGOING_TOPIC", "user.processed") // Example output topic
-	viper.SetDefault("OUTGOING_EXCHANGE_TYPE", "topic")  // Default to topic exchange for output
-	viper.SetDefault("CONSUMER_TAG", "user-processor-consumer")
+	// --- RabbitMQ Defaults ---
+	viper.SetDefault("RABBITMQ_URL", "amqp://guest:guest@rabbitmq:5672/")
+	viper.SetDefault("RABBITMQ_EXCHANGE_TYPE", "topic")
+	viper.SetDefault("OUTGOING_EXCHANGE_TYPE", "topic")
 	viper.SetDefault("RECONNECT_DELAY", 5*time.Second)
 	viper.SetDefault("MAX_RECONNECT_ATTEMPTS", 5)
 	viper.SetDefault("RABBITMQ_PREFETCH_COUNT", 10)
-	viper.SetDefault("DLX_NAME", "dlx.user_events")
-	viper.SetDefault("DLQ_ROUTING_KEY", "dlq.user_events_queue")
-	viper.SetDefault("PARKING_LOT_EXCHANGE_NAME", "parking_lot.user_events")
-	viper.SetDefault("PARKING_LOT_QUEUE_NAME", "parking_lot_user_events_queue")
-	viper.SetDefault("PARKING_LOT_ROUTING_KEY", "parking_lot.user_events_queue")
 	viper.SetDefault("MAX_PROCESSING_RETRIES", 3)
+
+	// --- Incoming Events (Subscribing) ---
+	viper.SetDefault("INCOMING_EXCHANGE_NAME", "shop_events")
+	viper.SetDefault("INCOMING_QUEUE_NAME", "product_service_queue")
+	viper.SetDefault("INCOMING_ROUTING_KEY", "inventory.checked") // CORRECTED: Listen for this event
+	viper.SetDefault("CONSUMER_TAG", "product-processor-consumer")
+
+	// --- Outgoing Events (Publishing) ---
+	viper.SetDefault("OUTGOING_EXCHANGE_NAME", "shop_events")
+	viper.SetDefault("OUTGOING_TOPIC", "product.details.fetched")
 
 	// If a config file is found, read it in.
 	if err = viper.ReadInConfig(); err == nil {
